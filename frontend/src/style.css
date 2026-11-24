@@ -70,6 +70,11 @@ td { border-top:1px solid var(--line); min-width: 3.3rem; max-width: 35ch; }
 .status { display:inline-block; border:1px solid var(--line); padding:.05em .55em; border-radius:var(--radius); white-space:nowrap; font-size:.88em; }
 .status[data-state='complete'] { color: oklch(.35 .09 150); border-color: oklch(.78 .11 151); }
 .status[data-state='failed'],.error { color: oklch(.36 .15 27); background: oklch(.94 .045 26); }
+.status[data-state='restored'] { color: oklch(.32 .1 150); border-color: oklch(.72 .12 151); background: oklch(.95 .04 151); }
+.status[data-state='already_complete'] { color: oklch(.34 .07 235); border-color: oklch(.75 .1 235); background: oklch(.95 .03 235); }
+.status[data-state='recoverable'] { color: oklch(.38 .1 75); border-color: oklch(.8 .12 75); background: oklch(.96 .05 75); }
+.status[data-state='conflict'] { color: oklch(.36 .15 27); border-color: oklch(.7 .14 27); background: oklch(.94 .05 26); }
+button.linklike { background:none; border:0; padding:0; color:var(--accent); font:inherit; cursor:pointer; text-decoration:underline; }
 .error { padding:.7rem .9rem; margin-bottom:1rem; border-inline-start:3px solid currentColor; }
 .empty { margin:0; padding:1.3rem; color:var(--muted); background:var(--soft); }
 summary { cursor:pointer; font-weight:600; color:var(--accent-dark); }

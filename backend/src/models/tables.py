@@ -32,6 +32,14 @@ evidence = Table('business_evidence', schema,
     Column('reviewer', String(40)),
     Column('review_note', String(500)),
     Column('reviewed_at', String(32)))
+backups = Table('business_backups', schema,
+    # 同一备份时点的执行单与凭证快照，按执行单原编号归档，供值班员误删恢复。
+    Column('id', Integer, primary_key=True),
+    Column('run_id', Integer, nullable=False, unique=True, index=True),
+    Column('case_id', Integer, nullable=False),
+    Column('run_snapshot', JSON, nullable=False),
+    Column('evidence_snapshot', JSON, nullable=False),
+    Column('created_at', String(32), nullable=False))
 audit = Table('audit_events', schema,
     Column('id', Integer, primary_key=True),
     Column('actor', String(40), nullable=False),

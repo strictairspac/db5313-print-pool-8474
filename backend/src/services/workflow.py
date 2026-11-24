@@ -95,10 +95,14 @@ def review(identity, note, actor):
     if not note:
         raise HTTPException(422, '复核意见不能为空')
     with engine.begin() as conn:
-        found(conn, evidence, identity)
+        evidence_row = found(conn, evidence, identity)
+        # 与备份恢复保持相同的加锁顺序（先执行单后凭证），避免并发死锁；
+        # 恢复期间线上照常签署，二者在此串行化。
+        conn.execute(select(runs.c.id).where(runs.c.id == evidence_row['run_id'])
+                     .with_for_update()).first()
         count = conn.execute(evidence.update().where(evidence.c.id == identity, evidence.c.reviewed_at.is_(None))
                             .values(review_note=note, reviewer=actor, reviewed_at=utc_time())).rowcount
         if count != 1:
-            raise HTTPException(409, '该证据已经复核')
+            raise HTTPException(409, '该证据已经复核或与备份恢复并发冲突，请刷新后重试')
         log(conn, actor, 'review', identity)
         return found(conn, evidence, identity)

@@ -3,10 +3,10 @@ from sqlalchemy import text
 
 from src.config.settings import cache, engine
 from src.controllers.workflow import download
-from src.models.tables import audit, cases, evidence, runs
+from src.models.tables import audit, backups, cases, evidence, runs
 from src.schemas.workflow import CaseForm, LoginForm, ReviewForm
-from src.services import domain, workflow
-from src.services.security import current_user, login, operator, reviewer
+from src.services import domain, recovery, workflow
+from src.services.security import current_user, duty, login, operator, reviewer
 
 router = APIRouter()
 
@@ -67,3 +67,23 @@ def review_evidence(identity: int, form: ReviewForm, actor=Depends(reviewer)):
 @router.get('/audit')
 def list_audit(_=Depends(current_user)):
     return workflow.recent(audit)
+
+
+@router.get('/duty/backups')
+def duty_backups(_=Depends(duty)):
+    return recovery.list_backups()
+
+
+@router.post('/duty/runs/{run_id}/backup', status_code=201)
+def duty_make_backup(run_id: int, actor=Depends(duty)):
+    return recovery.make_backup(run_id, actor)
+
+
+@router.get('/duty/runs/{run_id}/recovery-status')
+def duty_recovery_status(run_id: int, _=Depends(duty)):
+    return recovery.recovery_status(run_id)
+
+
+@router.post('/duty/runs/{run_id}/recover')
+def duty_recover(run_id: int, actor=Depends(duty)):
+    return recovery.recover(run_id, actor)

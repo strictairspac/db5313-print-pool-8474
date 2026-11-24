@@ -32,8 +32,20 @@ docker compose up -d --build --wait
 | `operator` | 经办员 | 读取档案、创建实验输入、提交执行、导出结果 |
 | `reviewer` | 复核员 | 读取、导出和签署结果 |
 | `viewer` | 观察员 | 读取、导出已有结果 |
+| `duty` | 数据库值班员 | 查询备份、按原编号恢复误删办结单（执行单与凭证同时点补回） |
 
-`SEED_DEMO=true` 启动时生成账号与一个业务样例。工作台新建档案会预填样例。可编辑表单中的数值、文本和结构化 JSON 后提交。业务说明中的原始文件是上游示例，演示数据通过表单录入。角色枚举位于后端 `src/constants/workflow.py` 与前端 `src/constants/workflow.js`。执行状态枚举也位于这两个文件，使用于队列、列表和执行详情。证据校验码是报告 JSON 按 UTF-8、键排序且省略多余空格序列化后的 SHA-256。
+`SEED_DEMO=true` 启动时生成账号与一个业务样例，并额外生成三条备份恢复演练数据：`9101` 已误删可恢复、`9102` 原已齐全、`9103` 同号内容与备份不符会报冲突。工作台新建档案会预填样例。可编辑表单中的数值、文本和结构化 JSON 后提交。业务说明中的原始文件是上游示例，演示数据通过表单录入。角色枚举位于后端 `src/constants/workflow.py` 与前端 `src/constants/workflow.js`。执行状态枚举也位于这两个文件，使用于队列、列表和执行详情。证据校验码是报告 JSON 按 UTF-8、键排序且省略多余空格序列化后的 SHA-256。
+
+### 备份恢复接口（值班员）
+
+| 方法与路径 | 说明 |
+|---|---|
+| `GET /duty/backups` | 备份清单（执行单原编号、档案编号、备份时间） |
+| `POST /duty/runs/{run_id}/backup` | 把现库办结单与凭证按同一时点纳入备份 |
+| `GET /duty/runs/{run_id}/recovery-status` | 按单号返回 `restored` 前置状态：`recoverable`、`already_complete`、`conflict`、`not_found` |
+| `POST /duty/runs/{run_id}/recover` | 按原编号恢复，返回 `restored`、`already_complete` 或 409 `conflict` |
+
+恢复事务先按写入时的现库内容逐字段比对，同号记录与备份不符即整单回滚报冲突；执行单与凭证一起生效，中断后重试不新增副本。业务口径见 [BUSINESS.md](BUSINESS.md) 的「误删办结单的备份恢复」。
 
 ## 工程结构
 
@@ -45,7 +57,15 @@ docker compose up -d --build --wait
 | db | PostgreSQL 16，持久卷保存档案、执行、证据及审计 |
 | redis | Redis 7，追加日志卷保存队列唤醒信号 |
 
-编辑 `backend/src/services/domain.py` 可修改试算方法与业务表单说明。API 路由、数据定义和页面位于 `backend/src/routes/`、`backend/src/models/` 与 `frontend/src/pages/`。开发时更新源文件后重新构建对应服务。
+编辑 `backend/src/services/domain.py` 可修改试算方法与业务表单说明。API 路由、数据定义和页面位于 `backend/src/routes/`、`backend/src/models/` 与 `frontend/src/pages/`。备份恢复逻辑位于 `backend/src/services/recovery.py`，值班恢复页位于 `frontend/src/pages/duty.js`。开发时更新源文件后重新构建对应服务。
+
+无 PostgreSQL 的本地环境可用 SQLite 跑备份恢复集成测试（生产默认仍是 PostgreSQL）：
+
+```sh
+cd backend
+DB_DRIVER=sqlite DB_NAME=/tmp/recovery-demo.db AUTH_KEY=test-key \
+  python -m tests.test_recovery
+```
 
 `.env.example` 提供 `FRONTEND_PORT`、`BACKEND_PORT`、`DB_PORT`、`DB_PASSWORD`、`AUTH_KEY` 、`SEED_DEMO` 与 `NETWORK_SUBNET`。修改 `NETWORK_SUBNET` 可避开本机现有容器网段。所有发布的端口绑定本机回环地址。接入独立部署前需配置自己的凭据并按业务范围做独立验收。
 
